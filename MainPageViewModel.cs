@@ -19,6 +19,7 @@ public class MainPageViewModel : IViewModelBase
     private readonly ILogger logger;
     private readonly IPermissionHandler permissionHandler;
     
+    public ICommand OnInitGattServerCommand { get; }
     public ICommand OnStartGattServerCommand { get; }
     public ICommand OnStopGattServerCommand { get; }
     
@@ -27,13 +28,20 @@ public class MainPageViewModel : IViewModelBase
         this.permissionHandler = permissionHandler;
         this.gattServer = gattServer;
         this.logger = logger;
+        OnInitGattServerCommand = new Command(OnInitGattServer);
         OnStartGattServerCommand = new Command(OnStartGattServer);
         OnStopGattServerCommand = new Command(OnStopGattServer);
     }
     public async Task OnAppearing()
     {
-        await permissionHandler.CheckAndRequestPermissionsAsync();
-        await gattServer.InitializeAsync(logger);
+        var permissionAsyncResult = await permissionHandler.CheckAndRequestPermissionsAsync();
+        logger.LogDebug(LoggerScope.GATT_SERVER_LIB_CONSUMER.EventId(), "Permission check result: {R}", permissionAsyncResult);
+
+        var isBleStatusEnable = await permissionHandler.IsBluetoothEnabledAsync();
+        if (!isBleStatusEnable)
+        {
+            await permissionHandler.RequestBluetoothActivationAsync();
+        }
     }
 
     public Task OnDisappearing()
@@ -41,6 +49,11 @@ public class MainPageViewModel : IViewModelBase
         return Task.CompletedTask;
     }
 
+    private async void OnInitGattServer()
+    {
+        await gattServer.InitializeAsync(logger);
+    }
+    
     private async void OnStartGattServer()
     {
         // Complete UUID (standard UUUID + base UUID)
@@ -59,11 +72,8 @@ public class MainPageViewModel : IViewModelBase
         var advOptions = new BleAdvOptions
         {
             LocalName = "MICHELE_DEVICE",
-            ServiceUuids = new string[] { customUuid.ToString() }
+            ServiceUuids = new string[] { disUuid.ToString() }
         };
-        
-        var starAsyncResult = await gattServer.StartAdvertisingAsync(advOptions);
-        logger.LogDebug(LoggerScope.GATT_SERVER_LIB_CONSUMER.EventId(), "Start advertising result: {R}", starAsyncResult);
         
         var addServiceResult = await gattServer.AddServiceAsync(disService);
         logger.LogDebug(LoggerScope.GATT_SERVER_LIB_CONSUMER.EventId(), "Add service {S} result: {R}", disUuid.ToString(), addServiceResult);
@@ -73,6 +83,9 @@ public class MainPageViewModel : IViewModelBase
 
         addServiceResult = await gattServer.AddServiceAsync(customService);
         logger.LogDebug(LoggerScope.GATT_SERVER_LIB_CONSUMER.EventId(), "Add service {S} result: {R}", disUuid.ToString(), addServiceResult);
+        
+        var starAsyncResult = await gattServer.StartAdvertisingAsync(advOptions);
+        logger.LogDebug(LoggerScope.GATT_SERVER_LIB_CONSUMER.EventId(), "Start advertising result: {R}", starAsyncResult);
     }
     
     private async void OnStopGattServer()

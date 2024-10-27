@@ -24,8 +24,9 @@
                 SemanticProperties.HeadingLevel="Level2"
                 SemanticProperties.Description="Welcome to dot net Multi platform App U I" />
             
-            <Button Command="{Binding OnStartGattServerCommand}" Text="Start GATT server" Margin="10" />
-            <Button Command="{Binding OnStopGattServerCommand}" Text="Stop GATT server" Margin="10" />
+            <Button Command="{Binding OnInitGattServerCommand}" Text="Initialize lib" Margin="2" />
+            <Button Command="{Binding OnStartGattServerCommand}" Text="Start GATT server" Margin="2" />
+            <Button Command="{Binding OnStopGattServerCommand}" Text="Stop GATT server" Margin="2" />
         </VerticalStackLayout>
     </ScrollView>
 </ContentPage>
