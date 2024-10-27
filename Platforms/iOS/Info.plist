@@ -28,5 +28,15 @@
 	</array>
 	<key>XSAppIconAssets</key>
 	<string>Assets.xcassets/appicon.appiconset</string>
+	<key>NSBluetoothAlwaysUsageDescription</key>
+	<string>GattServerLibShowcase need access to Bluetooth</string>
+	<key>NSBluetoothPeripheralUsageDescription</key>
+	<string>GattServerLibShowcase need access to Bluetooth</string>
+	<key>NSLocationAlwaysUsageDescription</key>
+	<string>GattServerLibShowcase need access to Location</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>GattServerLibShowcase need access to Location</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>GattServerLibShowcase need access to Location</string>
 </dict>
 </plist>
