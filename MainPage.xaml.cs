@@ -1,23 +1,27 @@
-﻿namespace Showcase;
+﻿using GattServerLib.Interfaces;
+using Microsoft.Extensions.Logging;
+
+namespace Showcase;
 
 public partial class MainPage : ContentPage
 {
-    int count = 0;
-
-    public MainPage()
+    public MainPage(IGattServer gattServer, ILogger logger, IPermissionHandler permissionHandler)
     {
         InitializeComponent();
+        BindingContext = new MainPageViewModel(gattServer, logger, permissionHandler);
     }
 
-    private void OnCounterClicked(object sender, EventArgs e)
+    protected override async void OnAppearing()
     {
-        count++;
+        base.OnAppearing();
 
-        if (count == 1)
-            CounterBtn.Text = $"Clicked {count} time";
-        else
-            CounterBtn.Text = $"Clicked {count} times";
+        await ((IViewModelBase)BindingContext).OnAppearing();
+    }
 
-        SemanticScreenReader.Announce(CounterBtn.Text);
+    protected override async void OnDisappearing()
+    {
+        base.OnDisappearing();
+
+        await ((IViewModelBase)BindingContext).OnDisappearing();
     }
 }

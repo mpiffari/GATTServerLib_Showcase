@@ -1,4 +1,6 @@
-﻿using Microsoft.Extensions.Logging;
+﻿using GattServerLib;
+using GattServerLib.Interfaces;
+using Microsoft.Extensions.Logging;
 
 namespace Showcase;
 
@@ -17,8 +19,10 @@ public static class MauiProgram
         
 #if ANDROID
         builder.Services.AddTransient<IGattServer, AndroidGattServer>();
+        builder.Services.AddTransient<IPermissionHandler, AndroidPermissionHandler>();
 #elif IOS
         builder.Services.AddTransient<IGattServer, iOSGattServer>();
+        builder.Services.AddTransient<IPermissionHandler, iOSPermissionHandler>();
 #endif
         builder.Services.AddTransient<ILogger, Logger.Logger>();
         builder.Services.AddSingleton<MainPage>();
