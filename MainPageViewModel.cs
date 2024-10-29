@@ -26,8 +26,10 @@ public class MainPageViewModel : IViewModelBase
     
     private static Guid customUuid = Guid.Parse("12345678-0000-1000-1996-00805F9B34FB");
     private static Guid customUuidCharact = Guid.Parse("CC3456CC-0000-1000-1996-00805F9B34FB");
-    private static Guid disUuid = Guid.Parse("0000180A-0000-1000-8000-00805F9B34FB");
-    private static Guid batteryUuid = Guid.Parse("0000180F-0000-1000-8000-00805F9B34FB");
+    private static Guid sDisUuid = Guid.Parse("0000180A-0000-1000-8000-00805F9B34FB");
+    private static Guid cDisUuid = Guid.Parse("C000180A-0000-1000-8000-00805F9B34FB");
+    private static Guid sBatteryUuid = Guid.Parse("0000180F-0000-1000-8000-00805F9B34FB");
+    private static Guid cBatteryUuid = Guid.Parse("C000180F-0000-1000-8000-00805F9B34FB");
     
     public MainPageViewModel(IGattServer gattServer, ILogger logger, IPermissionHandler permissionHandler)
     {
@@ -44,13 +46,13 @@ public class MainPageViewModel : IViewModelBase
     private Task<(bool, byte[])> OnRead((string sUuid, string cUuid, int offset) arg)
     {
         var c = Guid.Parse(arg.cUuid);
-        if (c == disUuid)
+        if (c == sDisUuid)
         {
             var bytes = "S21_OF_MINE"u8.ToArray();
             return Task.FromResult((true, bytes));
         }
         
-        if (c == batteryUuid)
+        if (c == sBatteryUuid)
         {
             return Task.FromResult((true, new byte[] { 0x0A })); // 10%
         }
@@ -85,11 +87,11 @@ public class MainPageViewModel : IViewModelBase
         try
         {
             // Complete UUID (standard UUUID + base UUID)
-            IBleService disService = new BleService("Device info", disUuid);
-            await disService.AddCharacteristicAsync(new BleCharacteristic("Information", disUuid, BleCharacteristicProperties.Read));
+            IBleService disService = new BleService("Device info", sDisUuid);
+            await disService.AddCharacteristicAsync(new BleCharacteristic("Information", cDisUuid, BleCharacteristicProperties.Read));
         
-            IBleService batteryService = new BleService("Battery info", batteryUuid);
-            await batteryService.AddCharacteristicAsync(new BleCharacteristic("Battery level", batteryUuid, BleCharacteristicProperties.Read));
+            IBleService batteryService = new BleService("Battery info", sBatteryUuid);
+            await batteryService.AddCharacteristicAsync(new BleCharacteristic("Battery level", cBatteryUuid, BleCharacteristicProperties.Read));
         
             IBleService customService = new BleService("Custom service", customUuid);
             await customService.AddCharacteristicAsync(new BleCharacteristic("Custom", customUuidCharact, BleCharacteristicProperties.Read));
@@ -97,20 +99,20 @@ public class MainPageViewModel : IViewModelBase
             var advOptions = new BleAdvOptions
             {
                 LocalName = "MICHELE_DEVICE",
-                ServiceUuids = new string[] { disUuid.ToString() }
+                ServiceUuids = new string[] { sDisUuid.ToString() }
             };
         
             var starAsyncResult = await gattServer.StartAdvertisingAsync(advOptions);
             logger.LogDebug(LoggerScope.GATT_SERVER_LIB_CONSUMER.EventId(), "Start advertising result: {R}", starAsyncResult);
         
             var addServiceResult = await gattServer.AddServiceAsync(disService);
-            logger.LogDebug(LoggerScope.GATT_SERVER_LIB_CONSUMER.EventId(), "Add service {S} result: {R}", disUuid.ToString(), addServiceResult);
+            logger.LogDebug(LoggerScope.GATT_SERVER_LIB_CONSUMER.EventId(), "Add service {S} result: {R}", sDisUuid.ToString(), addServiceResult);
         
             addServiceResult = await gattServer.AddServiceAsync(batteryService); 
-            logger.LogDebug(LoggerScope.GATT_SERVER_LIB_CONSUMER.EventId(), "Add service {S} result: {R}", disUuid.ToString(), addServiceResult);
+            logger.LogDebug(LoggerScope.GATT_SERVER_LIB_CONSUMER.EventId(), "Add service {S} result: {R}", sDisUuid.ToString(), addServiceResult);
 
             addServiceResult = await gattServer.AddServiceAsync(customService);
-            logger.LogDebug(LoggerScope.GATT_SERVER_LIB_CONSUMER.EventId(), "Add service {S} result: {R}", disUuid.ToString(), addServiceResult);
+            logger.LogDebug(LoggerScope.GATT_SERVER_LIB_CONSUMER.EventId(), "Add service {S} result: {R}", sDisUuid.ToString(), addServiceResult);
         }
         catch (Exception)
         {
