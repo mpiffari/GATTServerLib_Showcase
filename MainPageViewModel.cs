@@ -1,4 +1,3 @@
-using System.Text;
 using System.Windows.Input;
 using GattServerLib.GattOptions;
 using GattServerLib.Interfaces;
@@ -40,24 +39,28 @@ public class MainPageViewModel : IViewModelBase
         OnStartGattServerCommand = new Command(OnStartGattServer);
         OnStopGattServerCommand = new Command(OnStopGattServer);
         
-        gattServer.onRead = OnRead;
+        gattServer.OnRead = OnRead;
     }
 
-    private Task<(bool, byte[])> OnRead((string sUuid, string cUuid, int offset) arg)
+    private (bool, byte[]) OnRead((string cUuid, int offset) arg)
     {
         var c = Guid.Parse(arg.cUuid);
-        if (c == sDisUuid)
+        if (c == cDisUuid)
         {
+            logger.LogDebug(LoggerScope.GATT_SERVER_LIB_CONSUMER.EventId(), "Preparing response for device information...");
+
             var bytes = "S21_OF_MINE"u8.ToArray();
-            return Task.FromResult((true, bytes));
+            return (true, bytes);
         }
         
-        if (c == sBatteryUuid)
+        if (c == cBatteryUuid)
         {
-            return Task.FromResult((true, new byte[] { 0x0A })); // 10%
+            logger.LogDebug(LoggerScope.GATT_SERVER_LIB_CONSUMER.EventId(), "Preparing response for battery...");
+            return (true, new byte[] { 0x0A }); // 10%
         }
         
-        return Task.FromResult((false, new byte[] {  })); // 10%
+        logger.LogDebug(LoggerScope.GATT_SERVER_LIB_CONSUMER.EventId(), "Preparing response for other characteristic...");
+        return (false, new byte[] { 0xFF });
     }
 
     public async Task OnAppearing()
@@ -84,40 +87,42 @@ public class MainPageViewModel : IViewModelBase
     
     private async void OnStartGattServer()
     {
-        try
+        // Complete UUID (standard UUUID + base UUID)
+        var devInfoCharacts = new List<IBleCharacteristic>
         {
-            // Complete UUID (standard UUUID + base UUID)
-            IBleService disService = new BleService("Device info", sDisUuid);
-            await disService.AddCharacteristicAsync(new BleCharacteristic("Information", cDisUuid, BleCharacteristicProperties.Read));
-        
-            IBleService batteryService = new BleService("Battery info", sBatteryUuid);
-            await batteryService.AddCharacteristicAsync(new BleCharacteristic("Battery level", cBatteryUuid, BleCharacteristicProperties.Read));
-        
-            IBleService customService = new BleService("Custom service", customUuid);
-            await customService.AddCharacteristicAsync(new BleCharacteristic("Custom", customUuidCharact, BleCharacteristicProperties.Read));
-        
-            var advOptions = new BleAdvOptions
-            {
-                LocalName = "MICHELE_DEVICE",
-                ServiceUuids = new string[] { sDisUuid.ToString() }
-            };
-        
-            var starAsyncResult = await gattServer.StartAdvertisingAsync(advOptions);
-            logger.LogDebug(LoggerScope.GATT_SERVER_LIB_CONSUMER.EventId(), "Start advertising result: {R}", starAsyncResult);
-        
-            var addServiceResult = await gattServer.AddServiceAsync(disService);
-            logger.LogDebug(LoggerScope.GATT_SERVER_LIB_CONSUMER.EventId(), "Add service {S} result: {R}", sDisUuid.ToString(), addServiceResult);
-        
-            addServiceResult = await gattServer.AddServiceAsync(batteryService); 
-            logger.LogDebug(LoggerScope.GATT_SERVER_LIB_CONSUMER.EventId(), "Add service {S} result: {R}", sDisUuid.ToString(), addServiceResult);
+            new BleCharacteristic("Information", cDisUuid, BleCharacteristicProperties.Read)
+        };
+        IBleService disService = new BleService("Device info", sDisUuid, devInfoCharacts);
 
-            addServiceResult = await gattServer.AddServiceAsync(customService);
-            logger.LogDebug(LoggerScope.GATT_SERVER_LIB_CONSUMER.EventId(), "Add service {S} result: {R}", sDisUuid.ToString(), addServiceResult);
-        }
-        catch (Exception)
+        var batteryCharacts = new List<IBleCharacteristic>
         {
-            var a = 1;
-        }
+            new BleCharacteristic("Battery level", cBatteryUuid, BleCharacteristicProperties.Read)
+        };
+        IBleService batteryService = new BleService("Battery info", sBatteryUuid, batteryCharacts);
+    
+        var customCharacts = new List<IBleCharacteristic>
+        {
+            new BleCharacteristic("Custom", customUuidCharact, BleCharacteristicProperties.Read)
+        };
+        IBleService customService = new BleService("Custom service", customUuid, customCharacts);
+    
+        var advOptions = new BleAdvOptions
+        {
+            LocalName = "MICHELE_DEVICE",
+            ServiceUuids = new string[] { sDisUuid.ToString() }
+        };
+    
+        var starAsyncResult = await gattServer.StartAdvertisingAsync(advOptions);
+        logger.LogDebug(LoggerScope.GATT_SERVER_LIB_CONSUMER.EventId(), "Start advertising result: {R}", starAsyncResult);
+    
+        var addServiceResult = await gattServer.AddServiceAsync(disService);
+        logger.LogDebug(LoggerScope.GATT_SERVER_LIB_CONSUMER.EventId(), "Add service {S} result: {R}", sDisUuid.ToString(), addServiceResult);
+    
+        addServiceResult = await gattServer.AddServiceAsync(batteryService); 
+        logger.LogDebug(LoggerScope.GATT_SERVER_LIB_CONSUMER.EventId(), "Add service {S} result: {R}", sDisUuid.ToString(), addServiceResult);
+
+        addServiceResult = await gattServer.AddServiceAsync(customService);
+        logger.LogDebug(LoggerScope.GATT_SERVER_LIB_CONSUMER.EventId(), "Add service {S} result: {R}", sDisUuid.ToString(), addServiceResult);
     }
     
     private async void OnStopGattServer()
