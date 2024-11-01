@@ -24,7 +24,9 @@ public class MainPageViewModel : IViewModelBase
     public ICommand OnStopGattServerCommand { get; }
     
     private static Guid customUuid = Guid.Parse("12345678-0000-1000-1996-00805F9B34FB");
-    private static Guid customUuidCharact = Guid.Parse("CC3456CC-0000-1000-1996-00805F9B34FB");
+    private static Guid customUuidCharactWrite = Guid.Parse("C123456A-0000-1000-1996-111111111111");
+    private static Guid customUuidCharactWriteNoRx = Guid.Parse("C123456B-0000-1000-1996-222222222222");
+    private static Guid customUuidCharactNotify = Guid.Parse("C123456C-0000-1000-1996-333333333333");
     private static Guid sDisUuid = Guid.Parse("0000180A-0000-1000-8000-00805F9B34FB");
     private static Guid cDisUuid = Guid.Parse("C000180A-0000-1000-8000-00805F9B34FB");
     private static Guid sBatteryUuid = Guid.Parse("0000180F-0000-1000-8000-00805F9B34FB");
@@ -40,6 +42,7 @@ public class MainPageViewModel : IViewModelBase
         OnStopGattServerCommand = new Command(OnStopGattServer);
         
         gattServer.OnRead = OnRead;
+        gattServer.OnWrite = OnWrite;
     }
 
     private (bool, byte[]) OnRead((string cUuid, int offset) arg)
@@ -55,14 +58,38 @@ public class MainPageViewModel : IViewModelBase
         
         if (c == cBatteryUuid)
         {
+            var level = (int)(Battery.ChargeLevel * 100);
+            if (level > 100)
+            {
+                level = 100;
+            }
+
+            if (level < 0)
+            {
+                level = 0;
+            }
+            
             logger.LogDebug(LoggerScope.GATT_SERVER_LIB_CONSUMER.EventId(), "Preparing response for battery...");
-            return (true, new byte[] { 0x0A }); // 10%
+            return (true, new byte[] { (byte)level });
         }
         
         logger.LogDebug(LoggerScope.GATT_SERVER_LIB_CONSUMER.EventId(), "Preparing response for other characteristic...");
         return (false, new byte[] { 0xFF });
     }
 
+    private (bool isSuccess, bool notificationNeeded, string notificationUuid) OnWrite((string cUuid, byte[] valueWritten) arg)
+    {
+        var c = Guid.Parse(arg.cUuid);
+        if (c == customUuidCharactWriteNoRx)
+        {
+            logger.LogDebug(LoggerScope.GATT_SERVER_LIB_CONSUMER.EventId(), "Preparing notification echo...");
+            gattServer.SendNotification(arg.cUuid, arg.valueWritten);
+            return (true, true, customUuidCharactNotify.ToString());
+        }
+        
+        return (true, false, "");
+    }
+    
     public async Task OnAppearing()
     {
         var permissionAsyncResult = await permissionHandler.CheckAndRequestPermissionsAsync();
@@ -100,9 +127,12 @@ public class MainPageViewModel : IViewModelBase
         };
         IBleService batteryService = new BleService("Battery info", sBatteryUuid, batteryCharacts);
     
+        // TODO: check if for notifying CCD descriptor is mandatory (main for Android side)
         var customCharacts = new List<IBleCharacteristic>
         {
-            new BleCharacteristic("Custom", customUuidCharact, BleCharacteristicProperties.Read)
+            new BleCharacteristic("Custom write with response", customUuidCharactWrite, BleCharacteristicProperties.Write),
+            new BleCharacteristic("Custom write without response", customUuidCharactWriteNoRx, BleCharacteristicProperties.WriteWithoutResponse),
+            new BleCharacteristic("Custom notify", customUuidCharactNotify, BleCharacteristicProperties.Notify)
         };
         IBleService customService = new BleService("Custom service", customUuid, customCharacts);
     

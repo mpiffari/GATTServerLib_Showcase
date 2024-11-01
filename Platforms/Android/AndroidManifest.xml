@@ -5,6 +5,8 @@
 	<uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 	<uses-permission android:name="android.permission.INTERNET" />
 
+	<uses-permission android:name="android.permission.BATTERY_STATS" />
+	
 	<!--https://developer.android.com/develop/connectivity/bluetooth/bt-permissions-->
 	<uses-feature android:name="android.hardware.bluetooth_le" android:required="true"/>
 	<uses-permission android:name="android.permission.BLUETOOTH" />
