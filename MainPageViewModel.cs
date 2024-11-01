@@ -1,3 +1,5 @@
+using System.ComponentModel;
+using System.Runtime.CompilerServices;
 using System.Windows.Input;
 using GattServerLib.GattOptions;
 using GattServerLib.Interfaces;
@@ -13,12 +15,23 @@ public interface IViewModelBase
     Task OnDisappearing();
 }
 
-public class MainPageViewModel : IViewModelBase
+public class MainPageViewModel : INotifyPropertyChanged, IViewModelBase
 {
     private readonly IGattServer gattServer;
     private readonly ILogger logger;
     private readonly IPermissionHandler permissionHandler;
     
+    private string? gattServerConnectionState;
+    public string? GattServerConnectionState
+    {
+        get => gattServerConnectionState;
+        set
+        {
+            gattServerConnectionState = value;
+            OnPropertyChanged();
+        }
+    }
+
     public ICommand OnInitGattServerCommand { get; }
     public ICommand OnStartGattServerCommand { get; }
     public ICommand OnStopGattServerCommand { get; }
@@ -41,8 +54,15 @@ public class MainPageViewModel : IViewModelBase
         OnStartGattServerCommand = new Command(OnStartGattServer);
         OnStopGattServerCommand = new Command(OnStopGattServer);
         
+        gattServer.OnConnectionStateChanged = OnConnectionStateChanged;
         gattServer.OnRead = OnRead;
         gattServer.OnWrite = OnWrite;
+    }
+
+    private bool OnConnectionStateChanged(string arg)
+    {
+        GattServerConnectionState = arg;
+        return true;
     }
 
     private (bool, byte[]) OnRead((string cUuid, int offset) arg)
@@ -100,6 +120,8 @@ public class MainPageViewModel : IViewModelBase
         {
             await permissionHandler.RequestBluetoothActivationAsync();
         }
+
+        GattServerConnectionState = "NA";
     }
 
     public Task OnDisappearing()
@@ -138,7 +160,7 @@ public class MainPageViewModel : IViewModelBase
     
         var advOptions = new BleAdvOptions
         {
-            LocalName = "MICHELE_DEVICE",
+            LocalName = "MICHELES_DEVICE",
             ServiceUuids = new string[] { sDisUuid.ToString() }
         };
     
@@ -159,5 +181,20 @@ public class MainPageViewModel : IViewModelBase
     {
         await gattServer.StopAdvertisingAsync();
         logger.LogDebug(LoggerScope.GATT_SERVER_LIB_CONSUMER.EventId(), "Stop advertising");
+    }
+
+    public event PropertyChangedEventHandler? PropertyChanged;
+
+    protected virtual void OnPropertyChanged([CallerMemberName] string? propertyName = null)
+    {
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+    }
+
+    protected bool SetField<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
+    {
+        if (EqualityComparer<T>.Default.Equals(field, value)) return false;
+        field = value;
+        OnPropertyChanged(propertyName);
+        return true;
     }
 }
